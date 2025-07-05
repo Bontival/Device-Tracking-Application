@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server</title>
+    <script type="text/javascript" src="/eel.js"></script>
+    
+    <style>
+        .basecontainer { display: flex; flex: 1; height: 100%; }
+        /* .basecontainer > div { flex-grow: 1;} */
+        .sidebarinnercontainer { background: #f0f0f0; height: 100%; display: flex; flex-direction: column; padding: 10px; box-sizing: border-box; }
+        .sidebarinnercontainer div { height:100%; width:100%; background: #f0f0f0;}
+        .sidebarinnercontainer input { width:100%; font-size: 16px; box-sizing: border-box; }
+        .sidebarcontainer {  display: flex; flex: 1; height: 100%; margin-bottom: 130px;}
+        .sidebarcontainer div { float:left; }
+        .sidebarcontainer select { height:100%; }
+        .sidebarcontainer button { width:100%; }
+        .sidebarcontainer h3 { padding-top: 0px; margin-top: 0px; padding-bottom: 8px; font-size: 16px; }
+        html,body { height: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; background: #f0f0f0; }
+        /* body > * { flex-shrink: 0; } */
+        #sidebar { width: 180px; padding: 10px; }
+        #sidebar2 { width: 180px; padding: 10px; }
+        #content { flex: 1; padding: 10px; display: flex; flex-direction: column; }
+        .tab-buttons { display: flex; margin-bottom: 10px; border-bottom: 2px solid #ccc; }
+        .tab-buttons div { padding: 10px; cursor: pointer; }
+        .tab-buttons div.active { font-weight: bold; border-bottom: 2px solid blue; }
+        .tab-content { display: none; width: 100%; height: 100%; flex: 1 1 auto; overflow: hidden; }
+        .tab-content.active { display: flex; }
+        ul { list-style: none; padding: 0; }
+        ul li { padding: 5px; cursor: pointer; }
+        ul li:hover { background: #ddd; }
+        #saved-device-list { width: 100%; padding: 10px; font-size: 16px; overflow-y: auto; }
+        .chart, canvas {width: 100% !important; height: 100% !important; display: block; image-rendering: crisp-edges; image-rendering: -webkit-optimize-contrast; image-rendering: -moz-crisp-edges; }
+        .graphcontainer { height: 100% !important; display: flex; flex: 1; box-sizing: border-box; flex-direction: column }
+        .graphcontainer-inputs { width:100% !important; display: flex; box-sizing: border-box; }
+        #graph-settings { margin:4px; margin-top: 10px; font-size: 14px; }
+        #substation-selector {margin-bottom: 10px;}
+        #data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+        #data-table th, #data-table td { border: 1px solid #ccc; padding: 4px 6px; }
+        #data-table th { text-align: center; }
+        #data-table th:first-child { width: 30%; text-align: center; }
+        #data-table td:first-child { width: 30%; text-align: left; }
+        #data-table th:not(:first-child), #data-table td:not(:first-child) { width: 17.5%; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="basecontainer">
+        <div class="sidebarinnercontainer">
+            <div class="sidebarcontainer">
+                <div id="sidebar">
+                    <h3>Доступные датчики</h3>
+                    <!-- <button onclick="makeUL()">Сканировать устройства</button> -->
+                    <ul id="device-list"></ul>
+                </div>
+                <div id="sidebar2">
+                    <h3>Сохранённые датчики</h3>
+                    <select id="saved-device-list" multiple="multiple" onchange="handleChange()"></select>
+                    <!-- <ul id="saved-device-list"></ul> -->
+                    <button onclick="delete_device_on_click()">Удалить</button>
+                </div>
+            </div>
+            <select id="substation-selector">
+                <option value="">Все подстанции</option>
+            </select>
+            <input type="text" id="search-available" placeholder="Поиск..." oninput="filterAvailableDevices()">
+        </div>
+        <div id="content">
+            <div class="tab-buttons">
+                <div id="tab-btn1" class="active" onclick="switchTab('tab1')">Температура</div>
+                <div id="tab-btn2" onclick="switchTab('tab2')">Ток</div>
+                <div id="tab-btn3" onclick="switchTab('tab3')">Напряжение</div>
+                <div id="tab-btn4" onclick="switchTab('tab4')">Заряд</div>
+                <div id="tab-btn5" onclick="switchTab('tab5')">Мощность</div>
+            </div>
+            <div id="tab1" class="tab-content active">
+                <canvas class="chart" id="chart1"></canvas>
+            </div>
+            <div id="tab2" class="tab-content">
+                <canvas class="chart" id="chart2"></canvas>
+            </div>
+            <div id="tab3" class="tab-content">
+                <canvas class="chart" id="chart3"></canvas>
+            </div>
+            <div id="tab4" class="tab-content">
+                <canvas class="chart" id="chart4"></canvas>
+            </div>
+            <div id="tab5" class="tab-content">
+                <canvas class="chart" id="chart5"></canvas>
+            </div>
+            <table id="data-table">
+                <thead>
+                    <tr>
+                        <th>Параметр</th>
+                        <th>Температура</th>
+                        <th>Ток</th>
+                        <th>Напряжение</th>
+                        <th>Мощность</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Среднее арифметическое</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                    </tr>
+                    <tr>
+                        <td>Дисперсия</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                    </tr>
+                    <tr>
+                        <td>Коэффициент вариации</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>0</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div id="graph-settings">
+                <label for="updatecheck">Обновлять:</label>
+                <input type="checkbox" id="updatecheck" name="updater_checkbox" checked/>
+
+                <label for="num-readings">Кол-во записей:</label>
+                <input type="number" id="num-readings" name="num-readings" min="1" max="1000" required value="20"/>
+
+                <label for="reading-time-start">Показать с:</label>
+                <input type="datetime-local" id="reading-time-start" name="reading-time-start"/>
+
+                <label for="reading-time-end">по</label>
+                <input type="datetime-local" id="reading-time-end" name="reading-time-end"/>
+                <button onclick="addData()">Показать</button>
+                <button onclick="exportDataToExcelAndCSV()">⬇️</button>
+            </div>
+        </div>
+    </div>
+</body>
+<!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script type="text/javascript" src="chart.js"></script>
+<script type="text/javascript" src="main.js"></script>
+
+</html>
